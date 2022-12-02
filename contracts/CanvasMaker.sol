@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
-import "../node_modules/solmate/src/tokens/ERC721.sol";
-import "../node_modules/solmate/src/auth/Owned.sol";
+import "solmate/src/tokens/ERC721.sol";
+import "solmate/src/auth/Owned.sol";
 import "./Canvas.sol";
 
 import "hardhat/console.sol";

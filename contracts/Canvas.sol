@@ -1,6 +1,6 @@
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/utils/Strings.sol";
+import "solmate/src/utils/LibString.sol";
 
 import "hardhat/console.sol";
 
@@ -23,11 +23,13 @@ contract Canvas {
     string public name;
     string public symbol;
 
-    constructor(address _owner, uint256 _tokenId, address _factory) {
+    constructor(address _owner, uint256 _tokenId) {
         ownerOf = _owner;
         tokenId = _tokenId;
-        factory = _factory;
-        name = string(abi.encodePacked("Canvas #", Strings.toString(_tokenId)));
+        factory = msg.sender;
+        name = string(
+            abi.encodePacked("Canvas #", LibString.toString(_tokenId))
+        );
     }
 
     function transferFrom(address from, address to, uint256 id) external {
@@ -89,15 +91,15 @@ contract Canvas {
     function generateSvg() public view returns (string memory) {
         string memory svg = SVG_HEADER;
 
-        for (uint8 y = 0; y < 20; ) {
-            for (uint8 x = 0; x < 20; ) {
+        for (uint8 y = 0; y < 16; ) {
+            for (uint8 x = 0; x < 16; ) {
                 svg = string(
                     abi.encodePacked(
                         svg,
                         rx,
-                        Strings.toString(x * PX_WH),
+                        LibString.toString(x * PX_WH),
                         ry,
-                        Strings.toString(y * PX_WH),
+                        LibString.toString(y * PX_WH),
                         rwh,
                         rgbaToHex(getPixelFromCoords(x, y)),
                         rc

@@ -52,19 +52,20 @@ describe("CanvasMaker", function () {
         pixels.push(parseInt(Math.random() * 255));
       }
 
-      let tx = await canvas.setPixelsAss(pixels);
+      let tx = await canvas.setPixelsAssembly(pixels);
 
       tx.wait();
 
       let test = await canvas.getPixelFromCoords(23, 23);
       console.log(test);
 
+      // fill it up with random colors
       pixels = [];
       for (let i = 0; i < 2304; i++) {
         pixels.push(parseInt(Math.random() * 255));
       }
 
-      tx = await canvas.setPixelsAss2(pixels);
+      tx = await canvas.setPixelsAssembly(pixels);
       tx.wait();
 
       test = await canvas.getPixelFromCoords(23, 23);
