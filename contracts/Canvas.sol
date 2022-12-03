@@ -5,16 +5,29 @@ import "solmate/src/utils/LibString.sol";
 import "hardhat/console.sol";
 
 interface IFactory {
+    /* View */
     function balanceOf(address) external view returns (uint256);
 
     function isApprovedForAll(address, address) external view returns (bool);
 
+    /* Non-view */
+    function transferFrom(address from, address to, uint256 id) external;
+
     function approve(address, uint256) external;
+
+    function setApprovalForAll(address _operator, bool _approved) external;
+
+    function setApprovalForAllFromCanvas(
+        uint256 _tokenId,
+        address _owner,
+        address _operator,
+        bool _approved
+    ) external;
 }
 
 contract Canvas {
     /* ERC721 Stuff */
-    address public factory;
+    IFactory public factory;
     address public ownerOf;
     address public getApproved;
     uint256 public immutable tokenId;
@@ -26,27 +39,41 @@ contract Canvas {
     constructor(address _owner, uint256 _tokenId) {
         ownerOf = _owner;
         tokenId = _tokenId;
-        factory = msg.sender;
+        factory = IFactory(msg.sender);
         name = string(
             abi.encodePacked("Canvas #", LibString.toString(_tokenId))
         );
     }
 
     function transferFrom(address from, address to, uint256 id) external {
-        require(isApprovedForAll(from));
+        require(isApprovedForAll(msg.sender));
+        delete getApproved;
+        factory.transferFrom(from, to, tokenId);
         ownerOf = to;
     }
 
     function approve(address spender, uint256 id) external {
-        require(isApprovedForAll(msg.sender));
-        IFactory(factory).approve(spender, id); // need to check approval in factory
+        if (msg.sender != address(factory)) {
+            require(isApprovedForAll(msg.sender));
+            factory.approve(spender, id); // need to check approval in factory
+        }
         getApproved = spender;
+    }
+
+    // Ugly but not sure how else to do it
+    function setApprovalForAll(address _operator, bool _approved) external {
+        factory.setApprovalForAllFromCanvas(
+            tokenId,
+            msg.sender,
+            _operator,
+            _approved
+        );
     }
 
     /* View functions */
     function isApprovedForAll(address spender) internal view returns (bool) {
         return (ownerOf == msg.sender ||
-            IFactory(factory).isApprovedForAll(ownerOf, spender) ||
+            factory.isApprovedForAll(ownerOf, spender) ||
             msg.sender == getApproved);
     }
 
@@ -60,6 +87,8 @@ contract Canvas {
     }
 
     /* Pixel/Art Stuff - Will need to be reorganized */
+    /* Much of this could go in a separate renderer contract */
+
     uint8 private constant PX_WH = 8; // 8x8 pixels
     uint8 private constant BYTE_PER_PX = 4; // 4 bytes per pixel
     uint8 private constant PX_PER_SLOT = 8; // 8 pixels per slot
