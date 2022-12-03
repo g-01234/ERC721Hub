@@ -26,11 +26,31 @@ interface IFactory {
 }
 
 contract Canvas {
+    // ERC721 Functionality
+    // Most non-view functions will have two cases - one where the caller is an EOA, and another
+    // where the caller is the standalone canvas
+
+    // Events: Transfer, Approval, ApprovalForAll - emitted from hub contract
+    // ERC721 Functions:
+    // balanceOf(address _owner) external view returns (uint256);
+    // ownerOf(uint256 _tokenId) external view returns (address);
+    // safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) external payable;
+    // safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable;
+    // transferFrom(address _from, address _to, uint256 _tokenId) external payable;
+    // approve(address _approved, uint256 _tokenId) external payable;
+    // setApprovalForAll(address _operator, bool _approved) external;
+    // getApproved(uint256 _tokenId) external view returns (address);
+    // isApprovedForAll(address _owner, address _operator) external view returns (bool);
+
+    // ERC721Metadata functions: tokenURI, name, symbol
+
     /* ERC721 Stuff */
     IFactory public factory;
     address public ownerOf;
     address public getApproved;
     uint256 public immutable tokenId;
+
+    // bytes4 constant SET_APPROVAL_SELECTOR = bytes4("a22cb465")
 
     // is there a way to make these immutable in assembly - bytes[11] doesn't work
     string public name;
@@ -62,12 +82,14 @@ contract Canvas {
 
     // Ugly but not sure how else to do it
     function setApprovalForAll(address _operator, bool _approved) external {
-        factory.setApprovalForAllFromCanvas(
-            tokenId,
-            msg.sender,
-            _operator,
-            _approved
+        (bool success, ) = address(factory).delegatecall(
+            abi.encodeWithSelector(
+                factory.setApprovalForAll.selector,
+                _operator,
+                _approved
+            )
         );
+        require(success);
     }
 
     /* View functions */

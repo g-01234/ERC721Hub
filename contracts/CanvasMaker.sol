@@ -26,10 +26,6 @@ contract CanvasMaker is Owned {
 
     constructor() Owned(msg.sender) {}
 
-    // ERRORS
-    error AlreadyMinted();
-    error CollectionMintsDepleted();
-
     // ERC721 Functionality
     // Most non-view functions will have two cases - one where the caller is an EOA, and another
     // where the caller is the standalone canvas
