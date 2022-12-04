@@ -5,7 +5,7 @@ require("hardhat-gas-reporter");
 module.exports = {
   solidity: {
     version: "0.8.17",
-    settings: { optimizer: { enabled: false, runs: 200 } },
+    settings: { optimizer: { enabled: true, runs: 200 } },
   },
   gasReporter: {
     enabled: true,

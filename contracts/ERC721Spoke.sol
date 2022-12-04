@@ -2,30 +2,22 @@ pragma solidity 0.8.17;
 
 import "solmate/src/utils/LibString.sol";
 
-import "hardhat/console.sol";
+import "./ERC721Hub.sol";
 
-interface IFactory {
-    /* View */
-    function balanceOf(address) external view returns (uint256);
+// import "./IERC721.sol"; // Trying to avoid importing the whole hub for each deployed token
 
-    function isApprovedForAll(address, address) external view returns (bool);
+// import "hardhat/console.sol";
 
-    /* Non-view */
-    function transferFrom(address from, address to, uint256 id) external;
-
-    function approve(address, uint256) external;
-
-    function setApprovalForAll(address _operator, bool _approved) external;
-
-    function setApprovalForAllFromCanvas(
-        uint256 _tokenId,
+interface IHub {
+    function setApprovalForAllOnlySpoke(
         address _owner,
         address _operator,
-        bool _approved
+        bool _approved,
+        uint256 _tokenId
     ) external;
 }
 
-contract Canvas {
+contract ERC721Spoke {
     // ERC721 Functionality
     // Most non-view functions will have two cases - one where the caller is an EOA, and another
     // where the caller is the standalone canvas
@@ -33,7 +25,7 @@ contract Canvas {
     // Events: Transfer, Approval, ApprovalForAll - emitted from hub contract
     // ERC721 Functions:
     // balanceOf(address _owner) external view returns (uint256);
-    // ownerOf(uint256 _tokenId) external view returns (address);
+    // _ownerOf(uint256 _tokenId) external view returns (address);
     // safeTransferFrom(address _from, address _to, uint256 _tokenId, bytes data) external payable;
     // safeTransferFrom(address _from, address _to, uint256 _tokenId) external payable;
     // transferFrom(address _from, address _to, uint256 _tokenId) external payable;
@@ -45,10 +37,11 @@ contract Canvas {
     // ERC721Metadata functions: tokenURI, name, symbol
 
     /* ERC721 Stuff */
-    IFactory public factory;
-    address public ownerOf;
-    address public getApproved;
+    ERC721Hub public hub;
+    address internal _ownerOf;
     uint256 public immutable tokenId;
+
+    address private _getApproved;
 
     // bytes4 constant SET_APPROVAL_SELECTOR = bytes4("a22cb465")
 
@@ -57,55 +50,75 @@ contract Canvas {
     string public symbol;
 
     constructor(address _owner, uint256 _tokenId) {
-        ownerOf = _owner;
+        _ownerOf = _owner;
         tokenId = _tokenId;
-        factory = IFactory(msg.sender);
+        hub = ERC721Hub(msg.sender);
         name = string(
             abi.encodePacked("Canvas #", LibString.toString(_tokenId))
         );
     }
 
+    function ownerOf(uint256) external view returns (address) {
+        return _ownerOf;
+    }
+
     function transferFrom(address from, address to, uint256 id) external {
-        require(isApprovedForAll(msg.sender));
-        delete getApproved;
-        factory.transferFrom(from, to, tokenId);
-        ownerOf = to;
+        require(isApprovedForAll(_ownerOf, msg.sender));
+        delete _getApproved;
+        hub.transferFrom(from, to, tokenId);
+        _ownerOf = to;
     }
 
     function approve(address spender, uint256 id) external {
-        if (msg.sender != address(factory)) {
-            require(isApprovedForAll(msg.sender));
-            factory.approve(spender, id); // need to check approval in factory
+        if (msg.sender != address(hub)) {
+            require(
+                msg.sender == _ownerOf || isApprovedForAll(_ownerOf, msg.sender)
+            );
+            hub.approve(spender, id); // need to check approval in hub
         }
-        getApproved = spender;
+        _getApproved = spender;
     }
 
     // Ugly but not sure how else to do it
     function setApprovalForAll(address _operator, bool _approved) external {
-        (bool success, ) = address(factory).delegatecall(
-            abi.encodeWithSelector(
-                factory.setApprovalForAll.selector,
-                _operator,
-                _approved
-            )
+        // Can probably remove the success check? Not sure how this would ever fail
+        // (bool success, ) = address(hub).call(
+        //     abi.encodeWithSelector(
+        //         SET_APPROVAL_ONLY_CANVAS,
+        //         msg.sender,
+        //         _operator,
+        //         _approved,
+        //         tokenId
+        //     )
+        // );
+        // require(success);
+        IHub(address(hub)).setApprovalForAllOnlySpoke(
+            msg.sender,
+            _operator,
+            _approved,
+            tokenId
         );
-        require(success);
     }
 
     /* View functions */
-    function isApprovedForAll(address spender) internal view returns (bool) {
-        return (ownerOf == msg.sender ||
-            factory.isApprovedForAll(ownerOf, spender) ||
-            msg.sender == getApproved);
+    function getApproved(uint256 _tokenId) external view returns (address) {
+        return _getApproved;
     }
 
-    function tokenURI() external view returns (string memory) {
+    function isApprovedForAll(
+        address owner,
+        address spender
+    ) public view returns (bool) {
+        return (hub.isApprovedForAll(owner, spender));
+    }
+
+    function tokenURI(uint256 id) external view returns (string memory) {
         // Currently have a separate function that generates a SVG (generateSVG())
         return "wip";
     }
 
     function balanceOf(address owner) external view returns (uint256) {
-        return IFactory(factory).balanceOf(msg.sender);
+        return hub.balanceOf(msg.sender);
     }
 
     /* Pixel/Art Stuff - Will need to be reorganized */
@@ -219,12 +232,12 @@ contract Canvas {
     }
 
     function setPixels(uint8[2304] calldata _pixels) external {
-        require(msg.sender == ownerOf, "NOT_OWNER");
+        require(msg.sender == _ownerOf, "NOT_OWNER");
         pixels = _pixels;
     }
 
     function setPixelsAssembly(uint8[2304] calldata) external {
-        require(msg.sender == ownerOf, "NOT_OWNER");
+        require(msg.sender == _ownerOf, "NOT_OWNER");
 
         assembly {
             let pxNum := 0
@@ -260,7 +273,7 @@ contract Canvas {
     }
 
     function setPixelsAssembly2(uint8[2304] calldata) external {
-        require(msg.sender == ownerOf, "NOT_OWNER");
+        require(msg.sender == _ownerOf, "NOT_OWNER");
 
         assembly {
             let pxNum := 0
@@ -296,7 +309,7 @@ contract Canvas {
     }
 
     function setPixels2(uint8[2304] calldata _pixels) external {
-        require(msg.sender == ownerOf, "NOT_OWNER");
+        require(msg.sender == _ownerOf, "NOT_OWNER");
         pixels = _pixels;
     }
 
