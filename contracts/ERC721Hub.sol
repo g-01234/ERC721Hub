@@ -12,6 +12,8 @@ interface IERC721Spoke {
     function tokenURI(uint256) external view returns (string memory);
 
     function approve(address, uint256) external;
+
+    function transferFrom(address, address, uint256) external payable;
 }
 
 abstract contract ERC721Hub {
@@ -136,14 +138,18 @@ abstract contract ERC721Hub {
         emit ApprovalForAll(_owner, _operator, _approved);
     }
 
-    // TODO
+    /* Transfers */
     function transferFrom(address from, address to, uint256 id) public virtual {
         require(from == _ownerOf[id], "WRONG_FROM");
 
         require(to != address(0), "INVALID_RECIPIENT");
 
+        address spoke = spokes[id];
+        bool fromSpoke = (msg.sender == spoke);
+
         require(
             msg.sender == from ||
+                fromSpoke ||
                 isApprovedForAll[from][msg.sender] ||
                 msg.sender == getApproved[id],
             "NOT_AUTHORIZED"
@@ -160,6 +166,8 @@ abstract contract ERC721Hub {
         _ownerOf[id] = to;
 
         delete getApproved[id];
+
+        if (!fromSpoke) IERC721Spoke(spoke).transferFrom(from, to, id);
 
         emit Transfer(from, to, id);
     }

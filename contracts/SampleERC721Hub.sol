@@ -36,12 +36,13 @@ contract SampleERC721Hub is ERC721Hub, Owned {
 
     /* Minting Logic */
     function mintWithEth() external payable {
+        uint256 id = ++totalSupply;
         require(msg.value == PRICE, "NOT_ENOUGH_ETH");
-        _mint(msg.sender, ++totalSupply);
+        require(id < MAX_SUPPLY, "OUT_OF_STOCK");
+        _mint(msg.sender, id);
     }
 
     function _mint(address to, uint256 id) internal virtual override {
-        require(id < MAX_SUPPLY, "OUT_OF_STOCK");
         super._mint(to, id);
     }
 }

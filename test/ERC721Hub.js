@@ -5,6 +5,7 @@ const {
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const fs = require("fs");
+const { hasSubscribers } = require("diagnostics_channel");
 
 require("hardhat-gas-reporter");
 
@@ -43,85 +44,166 @@ describe("Hub", function () {
     });
   });
 
-  it("Should approve and unapprove an address in the Hub and Spoke", async function () {
-    const { hub, spoke, deployer, addr1 } = await loadFixture(basicDeployment);
+  // TODO - Check events
+  describe("Approvals", function () {
+    it("Should approve and unapprove an address in the Hub and Spoke", async function () {
+      const { hub, spoke, deployer, addr1 } = await loadFixture(
+        basicDeployment
+      );
 
-    let tx = await spoke.approve(addr1.address, 1);
-    await tx.wait();
+      let tx = await spoke.approve(addr1.address, 1);
+      await tx.wait();
+      expect(await spoke.getApproved(1)).to.be.equal(addr1.address);
+      expect(await hub.getApproved(1)).to.be.equal(addr1.address);
 
-    expect(await spoke.getApproved(1)).to.be.equal(addr1.address);
-    expect(await hub.getApproved(1)).to.be.equal(addr1.address);
+      tx = await spoke.approve(
+        ethers.utils.getAddress("0x0000000000000000000000000000000000000000"),
+        1
+      );
+      await tx.wait();
+      expect(await spoke.getApproved(1)).to.be.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
+      expect(await hub.getApproved(1)).to.be.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
 
-    tx = await spoke.approve(
-      ethers.utils.getAddress("0x0000000000000000000000000000000000000000"),
-      1
-    );
-    await tx.wait();
+      tx = await hub.approve(addr1.address, 1);
+      await tx.wait();
+      expect(await spoke.getApproved(1)).to.be.equal(addr1.address);
+      expect(await hub.getApproved(1)).to.be.equal(addr1.address);
 
-    expect(await spoke.getApproved(1)).to.be.equal(
-      "0x0000000000000000000000000000000000000000"
-    );
-    expect(await hub.getApproved(1)).to.be.equal(
-      "0x0000000000000000000000000000000000000000"
-    );
+      tx = await hub.approve(
+        ethers.utils.getAddress("0x0000000000000000000000000000000000000000"),
+        1
+      );
+      await tx.wait();
+      expect(await spoke.getApproved(1)).to.be.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
+      expect(await hub.getApproved(1)).to.be.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
+    });
 
-    tx = await hub.approve(addr1.address, 1);
-    await tx.wait();
+    it("Should setAll and unsetAll approvals for an address in the Hub and Spoke", async function () {
+      const { hub, spoke, deployer, addr1 } = await loadFixture(
+        basicDeployment
+      );
 
-    expect(await spoke.getApproved(1)).to.be.equal(addr1.address);
-    expect(await hub.getApproved(1)).to.be.equal(addr1.address);
+      /* Setting from hub */
+      let tx = await hub.setApprovalForAll(addr1.address, true);
+      await tx.wait();
+      expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to
+        .be.true;
+      expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
+        .true;
 
-    tx = await hub.approve(
-      ethers.utils.getAddress("0x0000000000000000000000000000000000000000"),
-      1
-    );
-    await tx.wait();
+      tx = await hub.setApprovalForAll(addr1.address, false);
+      await tx.wait();
+      expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to
+        .be.false;
+      expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
+        .false;
 
-    expect(await spoke.getApproved(1)).to.be.equal(
-      "0x0000000000000000000000000000000000000000"
-    );
-    expect(await hub.getApproved(1)).to.be.equal(
-      "0x0000000000000000000000000000000000000000"
-    );
+      /* Setting from spoke */
+      tx = await spoke.setApprovalForAll(addr1.address, true);
+      await tx.wait();
+      expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to
+        .be.true;
+      expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
+        .true;
+
+      tx = await spoke.setApprovalForAll(addr1.address, false);
+      await tx.wait();
+      expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to
+        .be.false;
+      expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
+        .false;
+    });
   });
 
-  it("Should setAll and unsetAll approvals for an address in the Hub and Spoke", async function () {
-    const { hub, spoke, deployer, addr1 } = await loadFixture(basicDeployment);
+  describe("Transfers", function () {
+    it("Should allow an owner to transfer their tokens from hub or spoke", async function () {
+      const { hub, spoke, deployer, addr1, addr2 } = await loadFixture(
+        basicDeployment
+      );
+      expect(await hub.ownerOf(1)).to.be.equal(deployer.address);
 
-    /* Setting from hub */
-    let tx = await hub.setApprovalForAll(addr1.address, true);
-    await tx.wait();
+      let tx = await hub.transferFrom(deployer.address, addr1.address, 1);
+      await tx.wait();
+      expect(await hub.ownerOf(1)).to.be.equal(addr1.address);
+      expect(await spoke.ownerOf(1)).to.be.equal(addr1.address);
 
-    expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .true;
-    expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .true;
+      // Call transferFrom on spoke from other address
+      tx = await spoke
+        .connect(addr1)
+        .transferFrom(addr1.address, addr2.address, 1);
+      await tx.wait();
+      expect(await hub.ownerOf(1)).to.be.equal(addr2.address);
+      expect(await spoke.ownerOf(1)).to.be.equal(addr2.address);
+    });
 
-    tx = await hub.setApprovalForAll(addr1.address, false);
-    await tx.wait();
+    it("Should not allow non-owner to transfer token", async function () {
+      const { hub, spoke, deployer, addr1, addr2 } = await loadFixture(
+        basicDeployment
+      );
 
-    expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .false;
-    expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .false;
+      await expect(
+        spoke.connect(addr1).transferFrom(addr1.address, addr2.address, 1)
+      ).to.be.reverted;
 
-    /* Setting from spoke */
-    tx = await spoke.setApprovalForAll(addr1.address, true);
-    await tx.wait();
-    console.log(await hub.isApprovedForAll(deployer.address, addr1.address));
+      await expect(
+        hub.connect(addr1).transferFrom(addr1.address, addr2.address, 1)
+      ).to.be.reverted;
 
-    expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .true;
-    expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .true;
+      let tx = await hub.transferFrom(deployer.address, addr1.address, 1);
+      await tx.wait();
 
-    tx = await spoke.setApprovalForAll(addr1.address, false);
-    await tx.wait();
+      await expect(hub.transferFrom(deployer.address, addr1.address, 1)).to.be
+        .reverted;
+    });
 
-    expect(await spoke.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .false;
-    expect(await hub.isApprovedForAll(deployer.address, addr1.address)).to.be
-      .false;
+    it("Should allow approved users to transfer tokens", async function () {
+      const { hub, spoke, deployer, addr1, addr2 } = await loadFixture(
+        basicDeployment
+      );
+
+      // setApprovalForAll() on hub
+      let tx = await hub.setApprovalForAll(addr1.address, true);
+      await tx.wait();
+
+      tx = await hub
+        .connect(addr1)
+        .transferFrom(deployer.address, addr2.address, 1);
+      await tx.wait();
+
+      expect(await hub.ownerOf(1)).to.be.equal(addr2.address);
+      expect(await spoke.ownerOf(1)).to.be.equal(addr2.address);
+
+      // setApprovalForAll() on spoke
+      tx = await spoke.connect(addr2).setApprovalForAll(addr1.address, true);
+      await tx.wait();
+
+      tx = await hub
+        .connect(addr1)
+        .transferFrom(addr2.address, addr1.address, 1);
+      await tx.wait();
+
+      expect(await hub.ownerOf(1)).to.be.equal(addr1.address);
+      expect(await spoke.ownerOf(1)).to.be.equal(addr1.address);
+
+      // approve() on hub
+      tx = await hub.connect(addr1).approve(addr2.address, 1);
+      await tx.wait();
+      tx = await hub
+        .connect(addr2)
+        .transferFrom(addr1.address, deployer.address, 1);
+      await tx.wait();
+
+      expect(await hub.ownerOf(1)).to.be.equal(deployer.address);
+      expect(await spoke.ownerOf(1)).to.be.equal(deployer.address);
+    });
   });
 
   // describe("Image Creation", function () {
