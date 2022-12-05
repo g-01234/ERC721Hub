@@ -1,6 +1,6 @@
 pragma solidity 0.8.17;
 
-import "./ERC721Hub.sol";
+import "../ERC721Hub.sol";
 import "solmate/src/utils/LibString.sol";
 
 // import "./IERC721.sol"; // Trying to avoid importing the whole hub for each deployed token
