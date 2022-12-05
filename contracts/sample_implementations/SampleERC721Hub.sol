@@ -5,7 +5,7 @@ import "../ERC721Hub.sol";
 import "./SampleSpoke.sol";
 
 interface ISampleSpoke {
-    function tokenURI(uint256 id) external view returns (string memory);
+    function tokenURI() external view returns (string memory);
 }
 
 // Sample ERC721Hub implementation. This is a simple implementation that has
@@ -40,6 +40,6 @@ contract SampleERC721Hub is ERC721Hub {
     // to determine how they want to handle this in their implementation.
     function tokenURI(uint256 id) public view override returns (string memory) {
         require(spokes[id] != address(0), "DOES_NOT_EXIST");
-        return ISampleSpoke(spokes[id]).tokenURI(id);
+        return ISampleSpoke(spokes[id]).tokenURI();
     }
 }

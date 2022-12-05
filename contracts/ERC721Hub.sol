@@ -5,7 +5,6 @@ import "solmate/src/tokens/ERC721.sol";
 
 /// @notice Modified ERC721 that generates an individual contract for each token.
 /// @author Team 4
-/// @ thanks Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
 interface ISpoke {
     function transferOwnership(address to) external payable;
 }
