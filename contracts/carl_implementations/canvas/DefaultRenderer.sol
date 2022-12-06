@@ -67,6 +67,7 @@ contract DefaultRenderer {
     }
 
     // Need to fix abiencode
+    // Test
     function render() public view returns (string memory) {
         string memory svg = SVG_HEADER;
 
