@@ -31,7 +31,7 @@ contract CanvasSpoke is Spoke {
 
     function renderSVG() public view returns (string memory) {
         (bool success, bytes memory data) = address(this).staticcall(
-            abi.encodeWithSelector(this.delegateRender.selector)
+            abi.encodeWithSelector(bytes4(0x9c74586a))
         );
         require(success);
         return abi.decode(data, (string));

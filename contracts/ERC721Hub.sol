@@ -6,7 +6,7 @@ import "solmate/src/tokens/ERC721.sol";
 /// @notice Modified ERC721 that generates an individual contract for each token.
 /// @author Team 4
 interface ISpoke {
-    function transferOwnership(address to) external payable;
+    function setOwner(address to) external payable;
 }
 
 abstract contract ERC721Hub is ERC721 {
@@ -35,7 +35,7 @@ abstract contract ERC721Hub is ERC721 {
         uint256 id
     ) public virtual override {
         super.transferFrom(from, to, id);
-        ISpoke(spokes[id]).transferOwnership(to);
+        ISpoke(spokes[id]).setOwner(to);
     }
 
     /*//////////////////////////////////////////////////////////////

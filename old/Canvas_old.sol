@@ -230,41 +230,41 @@
 //         pixels = _pixels;
 //     }
 
-function setPixelsAssembly(uint8[2304] calldata) external {
-    require(msg.sender == ownerOf, "NOT_OWNER");
+// function setPixelsAssembly(uint8[2304] calldata) external {
+//     require(msg.sender == ownerOf, "NOT_OWNER");
 
-    assembly {
-        let pxNum := 0
-        for {
-            let wordNum := 0
-        } lt(wordNum, 72) {
-            // 2304 / 32 = 72
-            wordNum := add(wordNum, 1)
-        } {
-            mstore(0x40, 0x0) // zero the mem we're using to be safe
-            for {
-                let cursor := 0
-            } lt(cursor, 32) {
-                cursor := add(cursor, 1)
-            } {
-                let buffer := mload(0x40)
-                // paaaack it in
-                mstore(
-                    0x40,
-                    add(
-                        buffer,
-                        shl(
-                            mul(cursor, 8),
-                            calldataload(add(mul(32, pxNum), 4))
-                        )
-                    )
-                )
-                pxNum := add(pxNum, 1)
-            }
-            sstore(add(pixels.slot, wordNum), mload(0x40))
-        }
-    }
-}
+//     assembly {
+//         let pxNum := 0
+//         for {
+//             let wordNum := 0
+//         } lt(wordNum, 72) {
+//             // 2304 / 32 = 72
+//             wordNum := add(wordNum, 1)
+//         } {
+//             mstore(0x40, 0x0) // zero the mem we're using to be safe
+//             for {
+//                 let cursor := 0
+//             } lt(cursor, 32) {
+//                 cursor := add(cursor, 1)
+//             } {
+//                 let buffer := mload(0x40)
+//                 // paaaack it in
+//                 mstore(
+//                     0x40,
+//                     add(
+//                         buffer,
+//                         shl(
+//                             mul(cursor, 8),
+//                             calldataload(add(mul(32, pxNum), 4))
+//                         )
+//                     )
+//                 )
+//                 pxNum := add(pxNum, 1)
+//             }
+//             sstore(add(pixels.slot, wordNum), mload(0x40))
+//         }
+//     }
+// }
 
 //     function setPixelsAssembly2(uint8[2304] calldata) external {
 //         require(msg.sender == ownerOf, "NOT_OWNER");

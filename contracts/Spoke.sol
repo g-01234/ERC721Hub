@@ -1,20 +1,24 @@
 pragma solidity >=0.8.0;
 
 import "./ERC721Hub.sol";
+import "solmate/src/auth/Owned.sol";
 
-contract Spoke {
+contract Spoke is Owned {
     address public hub;
-    address public owner;
     uint256 public immutable tokenId;
 
-    constructor(address _owner, uint256 _tokenId) {
-        owner = _owner;
+    modifier onlyHub() virtual {
+        require(msg.sender == hub, "UNAUTHORIZED");
+        _;
+    }
+
+    constructor(address _owner, uint256 _tokenId) Owned(_owner) {
         tokenId = _tokenId;
         hub = msg.sender;
     }
 
-    function transferOwnership(address to) external {
-        require(msg.sender == address(hub), "NOT_AUTHORIZED");
-        owner = to;
+    function setOwner(address newOwner) public virtual override onlyHub {
+        owner = newOwner;
+        emit OwnerUpdated(msg.sender, newOwner);
     }
 }

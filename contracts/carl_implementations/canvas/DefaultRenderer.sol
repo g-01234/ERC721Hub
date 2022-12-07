@@ -29,7 +29,7 @@ contract DefaultRenderer {
     uint8[2304] public pixels; // anyone can set this
 
     string internal constant SVG_HEADER =
-        '<svg xmlns="http://www.w3.org/2000/svg" version="1.2" viewBox="0 0 512 512">';
+        '<svg xmlns="http://www.w3.org/2000/svg" version="1.2" viewBox="0 0 128 128">';
     string internal constant SVG_FOOTER = "</svg>";
 
     function setPixels(uint8[2304] calldata) external {
@@ -66,8 +66,17 @@ contract DefaultRenderer {
         }
     }
 
-    // Need to fix abiencode
-    // Test
+    function testing() external view returns (string memory) {
+        string memory strm = "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
+        // test = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        assembly {
+            // mstore(0x120, 8)
+            // mstore(0x140, lk2)
+            // mstore(0x160, 0x0)
+            return(0x80, 0x60)
+        }
+    }
+
     function render() public view returns (string memory) {
         string memory svg = SVG_HEADER;
 

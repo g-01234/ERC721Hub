@@ -34,6 +34,7 @@ describe("CanvasHub", function () {
     // Get deployed spokes
     const spoke1Address = await hub.spokes(1);
     const spoke1 = await ethers.getContractAt("CanvasSpoke", spoke1Address);
+    // console.log("testing", await renderer.testing());
 
     const spoke2Address = await hub.spokes(2);
     const spoke2 = await ethers.getContractAt("CanvasSpoke", spoke2Address);
@@ -66,13 +67,6 @@ describe("CanvasHub", function () {
           console.error(err);
         }
       });
-
-      // // console.log(ethers.utils.hexlify([1, 2, 3, 4]));
-      // const arr = ethers.utils.solidityPack(
-      //   ["uint8", "uint8", "uint8", "uint8"],
-      //   [1, 2, 3, 4]
-      // );
-      // console.log(arr);
     });
   });
 });
