@@ -12,6 +12,7 @@ interface IERC20 {
 }
 
 /// @notice This contract returns the NAV value based on tracked underlying assets
+/// @author PizzaHi5#8447
 contract CalculateNAV is ICalculateNAV {
     /** 
         @param priceFeeds should all have the same denomination (I.E ETH/USD and BTC/USD), index 0 is ETH

@@ -11,6 +11,7 @@ interface ISpoke {
     function getPixels() external view returns (uint8[1024] memory);
 }
 
+/// @author @popular_12345 / popular#1234
 contract DefaultRenderer {
     uint8[1024] public pixels;
     uint8 private constant PX_WH = 8; // 8x8 pixels

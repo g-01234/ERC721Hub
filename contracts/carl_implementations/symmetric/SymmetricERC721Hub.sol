@@ -5,7 +5,7 @@
 
 // /// @notice Modified ERC721 that generates an individual contract for each token.
 // /// @author Team 4
-// /// @ thanks Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC721.sol)
+/// @author @popular_12345 / popular#1234
 
 // abstract contract SymmetricERC721Hub is ERC721Hub {
 //     function tokenURI(uint256 id) public view override returns (string memory) {

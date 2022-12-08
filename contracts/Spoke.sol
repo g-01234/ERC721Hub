@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 import "./ERC721Hub.sol";
 import "solmate/src/auth/Owned.sol";
 
+/// @author @popular_12345 / popular#1234
 contract Spoke is Owned {
     address public hub;
     uint256 public immutable tokenId;

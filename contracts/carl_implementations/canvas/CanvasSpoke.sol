@@ -3,14 +3,14 @@
 pragma solidity 0.8.17;
 import "../../Spoke.sol";
 
+/// @notice A spoke that stores a 16x16 grid of pixels.
+/// @author @popular_12345 / popular#1234
 interface Renderer {
     function renderSVG() external view returns (string memory);
 
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-/// @notice A spoke that stores a 16x16 grid of pixels.
-/// @author @popular0
 contract CanvasSpoke is Spoke {
     // 16 x 16 grid = 256 pixels
     // [uint8, uint8, uint8, uint8] = [r, g, b, a]

@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import "solmate/src/tokens/ERC721.sol";
 
 /// @notice Modified ERC721 that generates an individual contract for each token.
-/// @author Team 4
+/// @author @popular_12345 / popular#1234
 interface ISpoke {
     function setOwner(address to) external payable;
 }

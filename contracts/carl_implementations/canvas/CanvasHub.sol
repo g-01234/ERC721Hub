@@ -4,14 +4,14 @@ pragma solidity 0.8.17;
 import "../../ERC721Hub.sol";
 import "./CanvasSpoke.sol";
 
+/// @notice ERC721Hub implementation that mints CanvasSpoke contracts.
+/// @author @popular_12345 / popular#1234
 interface ICanvasSpoke {
     function renderSVG() external view returns (string memory);
 
     function tokenURI(uint256 id) external view returns (string memory);
 }
 
-/// @notice ERC721Hub implementation that mints CanvasSpoke contracts.
-/// @author @popular_12345 / popular#1234
 contract CanvasHub is ERC721Hub {
     uint256 public constant MAX_SUPPLY = 150;
     uint256 public constant PRICE = .02 ether;

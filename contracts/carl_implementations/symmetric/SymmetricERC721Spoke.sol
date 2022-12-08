@@ -3,10 +3,9 @@ pragma solidity 0.8.17;
 import "../../ERC721Hub.sol";
 import "solmate/src/utils/LibString.sol";
 
-// import "./IERC721.sol"; // Trying to avoid importing the whole hub for each deployed token
-
 import "hardhat/console.sol";
 
+/// @author @popular_12345 / popular#1234
 interface IHub {
     function setApprovalForAllOnlySpoke(
         address _owner,
