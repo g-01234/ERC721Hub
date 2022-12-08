@@ -16,4 +16,15 @@ We can implement arbitrary logic in each spoke contract, while still maintaining
 4. Consider what was unlocked in defi by treating LP positions as tradable/stakeable ERC721s - extend that to arbitrary logic versus just an LP position
 5. Further benefits to be determined!
 
+### Team Implementations
+
+1. Canvas - Each token contract contains an array of uint8s that can be used to store arbitrary pixels on-chain
+   - One RGBA pixel = [uint8 R, uint8 G, uint8 B, uint8 Alpha]
+   - Comes with a default renderer with on-chain generative SVG art
+   - [OpenSea testnet link](https://testnets.opensea.io/collection/canvashub-v3)
+2. ETFERC20 - Each token contract is a standalone ERC20 that issues shares equal to the derived NAV
+   - These ETF contracts can then be bought and sold on marketplaces
+   - Many different types of ETFERC20 Spokes can be minted, tracking different asset classes
+   - [OpenSea testnet link](https://testnets.opensea.io/assets/goerli/0x67df00d251b71a15776770ba5affb9ea6b5b3551/1)
+
 ![architecture](https://raw.githubusercontent.com/popular0/ETHDenver_ERC721Hub/main/architecture.png)
