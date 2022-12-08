@@ -1,16 +1,32 @@
-pragma solidity 0.8.17;
+// SPDX-License-Identifier: AGPL-3.0-only
 
+pragma solidity 0.8.17;
 import "../../Spoke.sol";
 
 interface Renderer {
-    function render() external view returns (string memory);
+    function renderSVG() external view returns (string memory);
 
-    function setPixels(uint8[2304] calldata _pixels) external;
+    function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
+/// @notice A spoke that stores a 16x16 grid of pixels.
+/// @author @popular0
 contract CanvasSpoke is Spoke {
-    uint8[2304] public pixels;
+    // 16 x 16 grid = 256 pixels
+    // [uint8, uint8, uint8, uint8] = [r, g, b, a]
+    // 4 bytes per pixel -> 8 pixels per slot -> 32 slots total
+    // pixel #s: 01 == (0, 0), 02 == (1, 0) ...
+    // 01 02 03 04 05 06 07 08 word1 - y=0
+    // 09 10 11 12 13 14 15 16 word2 - y=0
+    // 17 18 19 20 21 22 23 24 word3 - y=1
+    // 25 26 27 28 29 30 31 32 word4 - y=1
+    // 33 34 35 36 37 38 39 40 word5 - y=2
+    // 41 42 43 44 45 46 47 48 word6 - y=2
+    // etc..
+    uint8[1024] public pixels;
+
     address public renderer;
+    bool public pixelsSet;
 
     constructor(
         address _owner,
@@ -20,36 +36,60 @@ contract CanvasSpoke is Spoke {
         renderer = _defaultRenderer;
     }
 
-    function delegateRender() public returns (string memory) {
-        require(msg.sender == address(this)); // lmao
-        (bool success, bytes memory result) = renderer.delegatecall(
-            abi.encodeWithSelector(Renderer(renderer).render.selector)
-        );
-        require(success, "FAILED_TO_RENDER");
-        return abi.decode(result, (string));
+    function tokenURI(uint256 id) external view returns (string memory) {
+        return Renderer(renderer).tokenURI(id);
     }
 
-    function renderSVG() public view returns (string memory) {
-        (bool success, bytes memory data) = address(this).staticcall(
-            abi.encodeWithSelector(bytes4(0x9c74586a))
-        );
-        require(success);
-        return abi.decode(data, (string));
+    function renderSVG() external view returns (string memory) {
+        return Renderer(renderer).renderSVG();
     }
 
-    function setRenderer(address _renderer) external {
-        require(msg.sender == owner, "NOT_AUTHORIZED");
-        renderer = renderer;
+    function getPixels() external view returns (uint8[1024] memory) {
+        return pixels;
     }
 
-    function setPixels(uint8[2304] calldata _pixels) external {
-        require(msg.sender == owner, "NOT_OWNER");
-        (bool success, ) = renderer.delegatecall(
-            abi.encodeWithSelector(
-                Renderer(renderer).setPixels.selector,
-                _pixels
-            )
-        );
-        require(success, "FAILED_TO_SET_PIXELS");
+    function setRenderer(address _renderer) external onlyOwner {
+        renderer = _renderer;
+    }
+
+    // calldata isn't packed - need to pack it into memory -> store it
+    function setPixels(uint8[1024] calldata) external onlyOwner {
+        assembly {
+            let pxNum := 0
+            for {
+                let wordNum := 0
+            } lt(wordNum, 32) {
+                wordNum := add(1, wordNum)
+            } {
+                mstore(0x40, 0x0) // zero the mem we're using to be safe
+                for {
+                    let cursor := 0
+                } lt(cursor, 32) {
+                    cursor := add(1, cursor)
+                } {
+                    let buffer := mload(0x40)
+                    // paaaack it in
+                    mstore(
+                        0x40,
+                        add(
+                            buffer,
+                            shl(
+                                mul(8, cursor),
+                                calldataload(add(4, mul(32, pxNum)))
+                            )
+                        )
+                    )
+                    pxNum := add(1, pxNum)
+                }
+                sstore(add(pixels.slot, wordNum), mload(0x40))
+            }
+        }
+        pixelsSet = true;
+    }
+
+    // Note that the storage is not zeroed out, so this is not a true "unset".
+    // Would have to zero everything in setPixels() and then use this.
+    function unsetPixels() external onlyOwner {
+        pixelsSet = false;
     }
 }

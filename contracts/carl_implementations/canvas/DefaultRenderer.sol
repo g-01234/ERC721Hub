@@ -1,118 +1,106 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
 pragma solidity 0.8.17;
 
 import "solmate/src/utils/LibString.sol";
-import "hardhat/console.sol";
+import "./Base64.sol";
+
+interface ISpoke {
+    function pixelsSet() external view returns (bool);
+
+    function getPixels() external view returns (uint8[1024] memory);
+}
 
 contract DefaultRenderer {
+    uint8[1024] public pixels;
     uint8 private constant PX_WH = 8; // 8x8 pixels
     uint8 private constant BYTE_PER_PX = 4; // 4 bytes per pixel
-    uint8 private constant PX_PER_SLOT = 8; // 8 pixels per slot
-    uint8 private constant RESOLUTION = 24; // 24x24 pixels
+    uint8 private constant RESOLUTION = 16; // 24x24 pixels
 
     bytes16 private constant _SYMBOLS = "0123456789abcdef";
-    string private constant rx = "<rect x='";
-    string private constant ry = "' y='";
-    string private constant rwh = "' width='8' height='8' fill='";
-    string private constant rc = "'/>";
+    string private constant RX = '<rect x="';
+    string private constant RY = '" y="';
+    string private constant RWH = '" width="8" height="8" fill="';
+    string private constant RC = '"/>';
 
-    // 24 x 24 grid = 576 pixels
-    // [uint8, uint8, uint8, uint8] = [r, g, b, a]
-    // 4 bytes per pixel -> 8 pixels per slot -> 72 slots
-    // pixel #s: 01 == (0, 0), 02 == (1, 0)
-    // 01 02 03 04 05 06 07 08 word1 - start y=0
-    // 09 10 11 12 13 14 15 16 word2
-    // 17 18 19 20 21 22 23 24 word3 - end y=0
-    // 25 26 27 28 29 30 31 32 word4 - start y=1
-    // 33 34 35 36 37 38 39 40 word5
-    // 41 42 43 44 45 46 47 48 word6 - end y=1
-    // etc..
-    uint8[2304] public pixels; // anyone can set this
+    string private constant MD1 = '{"name":"Canvas #';
+    string private constant MD2 =
+        '","description":"TEST","image":"data:image/svg+xml;base64,';
+    string private constant MD3 = '"}';
 
     string internal constant SVG_HEADER =
-        '<svg xmlns="http://www.w3.org/2000/svg" version="1.2" viewBox="0 0 128 128">';
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 128 128">';
     string internal constant SVG_FOOTER = "</svg>";
 
-    function setPixels(uint8[2304] calldata) external {
-        assembly {
-            let pxNum := 0
-            for {
-                let wordNum := 0
-            } lt(wordNum, 72) {
-                // 2304 / 32 = 72
-                wordNum := add(wordNum, 1)
-            } {
-                mstore(0x40, 0x0) // zero the mem we're using to be safe
-                for {
-                    let cursor := 0
-                } lt(cursor, 32) {
-                    cursor := add(cursor, 1)
-                } {
-                    let buffer := mload(0x40)
-                    // paaaack it in
-                    mstore(
-                        0x40,
-                        add(
-                            buffer,
-                            shl(
-                                mul(cursor, 8),
-                                calldataload(add(mul(32, pxNum), 4))
-                            )
-                        )
+    function tokenURI(uint256 tokenId) external view returns (string memory) {
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        MD1,
+                        LibString.toString(tokenId),
+                        MD2,
+                        renderSVG(),
+                        MD3
                     )
-                    pxNum := add(pxNum, 1)
-                }
-                sstore(add(pixels.slot, wordNum), mload(0x40))
-            }
-        }
+                )
+            )
+        );
+        return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
-    function testing() external view returns (string memory) {
-        string memory strm = "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd";
-        // test = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        assembly {
-            // mstore(0x120, 8)
-            // mstore(0x140, lk2)
-            // mstore(0x160, 0x0)
-            return(0x80, 0x60)
+    function renderSVG() public view returns (string memory) {
+        bool ps = ISpoke(msg.sender).pixelsSet();
+        uint8[1024] memory _pixels;
+        uint256 px; // pixel index
+        if (ps) {
+            _pixels = ISpoke(msg.sender).getPixels();
         }
-    }
 
-    function render() public view returns (string memory) {
         string memory svg = SVG_HEADER;
-
         for (uint8 y = 0; y < 16; y++) {
             for (uint8 x = 0; x < 16; x++) {
                 svg = string.concat(
                     svg,
-                    rx,
+                    RX,
                     LibString.toString(x * PX_WH),
-                    ry,
+                    RY,
                     LibString.toString(y * PX_WH),
-                    rwh,
-                    rgbaToHex(getPixelFromCoords(x, y)),
-                    rc
+                    RWH,
+                    ps
+                        ? rgbaToHex(
+                            [
+                                _pixels[px],
+                                _pixels[px + 1],
+                                _pixels[px + 2],
+                                _pixels[px + 3]
+                            ]
+                        )
+                        : getRandyPixel(x + y),
+                    RC
                 );
+                px += 4;
             }
         }
-
-        return string.concat(svg, SVG_FOOTER);
+        svg = string.concat(svg, SVG_FOOTER);
+        return Base64.encode(bytes(svg));
     }
 
-    // /// @param wordSlot -
-    // function getWordOfPixels(uint8 wordSlot) internal view returns (bytes32) {
-
-    // }
-
-    function getPixelFromCoords(
-        uint256 x,
-        uint256 y
-    ) public view returns (uint8[4] memory) {
-        uint8[4] memory pixel;
-        uint256 serial = (y * RESOLUTION * BYTE_PER_PX) + (x * BYTE_PER_PX);
-        for (uint8 i = 0; i < 4; i++) {
-            pixel[i] = pixels[serial + i];
-        }
-        return pixel;
+    // Will result in unique image for each token
+    function getRandyPixel(uint8 salt) internal view returns (string memory) {
+        bytes4 hash = bytes4(
+            keccak256(abi.encodePacked(address(this), msg.sender, salt))
+        );
+        return
+            string(
+                abi.encodePacked(
+                    "#",
+                    u8ToHexDigits(uint8(hash[0])),
+                    u8ToHexDigits(uint8(hash[1])),
+                    u8ToHexDigits(uint8(hash[2])),
+                    u8ToHexDigits(uint8(hash[3]))
+                )
+            );
     }
 
     function rgbaToHex(
@@ -130,9 +118,7 @@ contract DefaultRenderer {
             );
     }
 
-    /**
-     * @dev Converts a `uint8` to its ASCII `hex` digits, without 0x prefix.
-     */
+    // Converts a `uint8` to its ASCII `hex` digits, without 0x prefix.
     function u8ToHexDigits(
         uint256 value
     ) internal pure returns (string memory) {

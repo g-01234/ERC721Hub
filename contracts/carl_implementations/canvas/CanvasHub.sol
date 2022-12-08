@@ -1,19 +1,19 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.17;
 
 import "../../ERC721Hub.sol";
 import "./CanvasSpoke.sol";
-import "solmate/src/utils/LibString.sol";
 
 interface ICanvasSpoke {
     function renderSVG() external view returns (string memory);
+
+    function tokenURI(uint256 id) external view returns (string memory);
 }
 
-// Sample ERC721Hub implementation. This is a simple implementation that has
-// basic mint logic and inherits from ERC721Hub. The spoke is a SampleSpoke
-// with bare-bones tokenURI logic.
+/// @notice ERC721Hub implementation that mints CanvasSpoke contracts.
+/// @author @popular_12345 / popular#1234
 contract CanvasHub is ERC721Hub {
-    uint256 public constant MAX_SUPPLY = 2048;
+    uint256 public constant MAX_SUPPLY = 150;
     uint256 public constant PRICE = .02 ether;
 
     uint256 public totalSupply;
@@ -47,7 +47,7 @@ contract CanvasHub is ERC721Hub {
     function tokenURI(uint256 id) public view override returns (string memory) {
         require(spokes[id] != address(0), "DOES_NOT_EXIST");
 
-        string memory svg = ICanvasSpoke(spokes[id]).renderSVG();
+        string memory svg = ICanvasSpoke(spokes[id]).tokenURI(id);
         return svg;
     }
 }

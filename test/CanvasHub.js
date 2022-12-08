@@ -4,7 +4,6 @@ const {
 } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const fs = require("fs");
-
 require("hardhat-gas-reporter");
 describe("CanvasHub", function () {
   async function basicDeployment() {
@@ -21,52 +20,81 @@ describe("CanvasHub", function () {
     const hub = await Hub.deploy("CanvasHub", "CHUB", renderer.address);
     await hub.deployed();
 
-    // Mint two spokes, one to deployer one to addr1
+    // Mint 100 spokes, one to deployer rest to addr1
+    let spokes = [];
     let makeSpoke = await hub.mintWithEth({
       value: ethers.utils.parseUnits(".02", "ether"),
     });
     await makeSpoke.wait();
-    makeSpoke = await hub.connect(addr1).mintWithEth({
-      value: ethers.utils.parseUnits(".02", "ether"),
-    });
-    await makeSpoke.wait();
+    let spokeAddress = await hub.spokes(1);
+    let spoke = await ethers.getContractAt("CanvasSpoke", spokeAddress);
 
-    // Get deployed spokes
-    const spoke1Address = await hub.spokes(1);
-    const spoke1 = await ethers.getContractAt("CanvasSpoke", spoke1Address);
-    // console.log("testing", await renderer.testing());
+    spokes.push(spoke);
 
-    const spoke2Address = await hub.spokes(2);
-    const spoke2 = await ethers.getContractAt("CanvasSpoke", spoke2Address);
+    for (let i = 2; i < 20; i++) {
+      makeSpoke = await hub.connect(addr1).mintWithEth({
+        value: ethers.utils.parseUnits(".02", "ether"),
+      });
+      await makeSpoke.wait();
+
+      spokeAddress = await hub.spokes(i);
+      spoke = await ethers.getContractAt("CanvasSpoke", spokeAddress);
+
+      spokes.push(spoke);
+    }
 
     console.log("hub: ", hub.address);
-    console.log("spoke1: ", spoke1.address);
-    console.log("spoke2: ", spoke1.address);
     console.log("deployer: ", deployer.address);
+    console.log("renderer: ", renderer.address);
+    console.log("spokes0: ", spokes[0].address);
     console.log("addr1: ", addr1.address);
     console.log("addr2: ", addr2.address);
-    return { hub, spoke1, spoke2, deployer, addr1, addr2 };
+    console.log("num spokes: ", spokes.length);
+    return { hub, spokes, renderer, deployer, addr1, addr2 };
   }
 
   describe("Image Creation", function () {
-    it("Should create a test image", async function () {
-      const { spoke1, deployer } = await loadFixture(basicDeployment);
+    it("Should get tokenURIs", async function () {
+      const { hub } = await loadFixture(basicDeployment);
+      expect(await hub.tokenURI(1)).to.not.equal("");
+    });
+
+    it("Should allow setting pixels", async function () {
+      const { hub, spokes, renderer, addr1 } = await loadFixture(
+        basicDeployment
+      );
 
       let pixels = [];
-      for (let i = 0; i < 2304; i++) {
+      for (let i = 0; i < 1024; i++) {
         pixels.push(parseInt(Math.random() * 255));
       }
 
-      let tx = await spoke1.setPixels(pixels);
-      tx.wait();
+      let tx = await spokes[0].setPixels(pixels);
+      await tx.wait();
 
-      let svg = await spoke1.renderSVG();
-      // console.log(svg);
-      fs.writeFile("./test.svg", svg, (err) => {
+      let svg = await spokes[0].renderSVG();
+
+      fs.writeFile(`./output/svgRand.svg`, svg, (err) => {
         if (err) {
           console.error(err);
         }
       });
+    });
+
+    it("Should create some test images", async function () {
+      const { spokes } = await loadFixture(basicDeployment);
+
+      let svg;
+      for (let i = 0; i < 3; i++) {
+        svg = await spokes[i].renderSVG();
+
+        fs.writeFile(`./output/svg${i}.svg`, svg, (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
+        console.log(`Done writing svg${i}.svg`);
+      }
     });
   });
 });

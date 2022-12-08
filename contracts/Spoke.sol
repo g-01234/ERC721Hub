@@ -19,6 +19,8 @@ contract Spoke is Owned {
 
     function setOwner(address newOwner) public virtual override onlyHub {
         owner = newOwner;
-        emit OwnerUpdated(msg.sender, newOwner);
+
+        // Only way to call this is in transferFrom, which already
+        // emits an event
     }
 }
